@@ -1,0 +1,17 @@
+### Health check
+GET http://localhost:8000/health
+
+### Ping
+GET http://localhost:8000/api/ping
+
+### Teams message (simulated)
+POST http://localhost:8000/api/messages
+Content-Type: application/json
+
+{
+  "type": "message",
+  "text": "How many vacation days do I get?"
+}
+
+### OpenAPI
+GET http://localhost:8000/docs

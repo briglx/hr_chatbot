@@ -1,0 +1,14 @@
+-r requirements.txt
+
+bandit[toml]
+codespell
+httpx                         # ASGI test client
+plint
+pre-commit
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+python-dotenv
+ruff
+tomli
