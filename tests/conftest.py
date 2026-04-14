@@ -1,13 +1,16 @@
-import sys
 from pathlib import Path
-import pytest
+import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+
 
 @pytest.fixture(scope="session")
 def project_root():
     return Path(__file__).parent.parent
+
 
 @pytest.fixture(scope="session")
 def test_docs_dir(project_root):
@@ -26,6 +29,8 @@ def mock_settings():
     settings.openai_temperature = 0.0
     settings.vector_top_k = 5
     settings.is_production = False
-    with patch("app.config.settings.get_settings", return_value=settings), \
-         patch("app.services.embedding_service.get_settings", return_value=settings):
+    with (
+        patch("app.config.settings.get_settings", return_value=settings),
+        patch("app.services.embedding_service.get_settings", return_value=settings),
+    ):
         yield settings

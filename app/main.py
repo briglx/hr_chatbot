@@ -1,15 +1,33 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
+import structlog
 
 from app.api.routes import router
+from app.config.logging import setup_logging
+from app.config.settings import get_settings
+from app.memory.stores.redis_store import RedisStore
+
+setup_logging()
+logger = structlog.get_logger()
+logger.info("Application initialized")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    print("Starting up...")
+    logger = structlog.get_logger()
+    logger.info("Starting up...")
+    settings = get_settings()
+    redis_store = RedisStore(settings.redis_url)
+    await redis_store.connect()
+
+    app.state.redis_store = redis_store
+
     yield
-    print("Shutting down...")
+
+    logger.info("Cleaning up resources...")
+    await redis_store.disconnect()
 
 
 def create_app() -> FastAPI:
@@ -17,10 +35,11 @@ def create_app() -> FastAPI:
         title="HR AI Chatbot",
         description="AI-powered HR assistant for Microsoft Teams",
         version="0.1.0",
+        lifespan=lifespan,
     )
 
     app.include_router(router)
-    
+
     @app.get("/health")
     async def health_check() -> dict:
         return {"status": "ok"}

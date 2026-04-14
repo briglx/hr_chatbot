@@ -2,7 +2,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,12 +32,18 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     # ------------------------------------------------------------------ #
+    # General
+    # ------------------------------------------------------------------ #
+    company_name: str = "Contoso"
+
+    # ------------------------------------------------------------------ #
     # OpenAI
     # ------------------------------------------------------------------ #
     azure_openai_endpoint: str = Field(..., description="Azure OpenAI endpoint URL")
     azure_openai_api_key: str = Field(..., description="Azure OpenAI API key")
     azure_openai_api_version: str = "2024-06-01"
     azure_openai_embedding_model: str = "text-embedding-3-small"
+    azure_openai_completion_model: str = "gpt-4o"
 
     openai_embedding_dimensions: int = 1536
     openai_max_tokens: int = 1024
@@ -84,9 +90,13 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
-    
+
     vector_store: VectorStore = VectorStore.PGVECTOR
     vector_top_k: int = Field(5, description="Number of chunks to retrieve per query")
+    retrieval_min_score: float = Field(
+        0.5,
+        description="Minimum cosine similarity score for retrieved chunks to be included in the prompt",
+    )
 
     # Azure AI Search (used when vector_store == azure_ai_search)
     # azure_search_endpoint: str = ""
@@ -122,6 +132,14 @@ class Settings(BaseSettings):
         if not 0.0 <= v <= 1.0:
             raise ValueError("cache_similarity_threshold must be between 0.0 and 1.0")
         return v
+
+    # ------------------------------------------------------------------ #
+    # Prompts
+    # ------------------------------------------------------------------ #
+    prompt_template: str = Field(
+        default="hr_system_prompt.j2",
+        description="Jinja2 template file to use for the system prompt",
+    )
 
     # ------------------------------------------------------------------ #
     # Convenience properties

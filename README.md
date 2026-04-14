@@ -74,7 +74,7 @@ cp .env.example .env
 ### 3. Start Redis (Docker)
 
 ```bash
-docker run -d -p 6379:6379 redis:7-alpine
+docker run -d --name local-redis -p 6379:6379 redis:7-alpine
 ```
 
 ### 4. Set up the vector database

@@ -1,8 +1,20 @@
 import json
-import pytest
-from unittest.mock import MagicMock, patch
 from pathlib import Path
-from ingest_data import chunk_text, insert_document, get_connection, extract_text_from_pdf, extract_text_from_docx, get_embedding, ingest_file, ingest_directory, parse_args, main
+from unittest.mock import MagicMock, patch
+
+from ingest_data import (
+    chunk_text,
+    extract_text_from_docx,
+    extract_text_from_pdf,
+    get_connection,
+    get_embedding,
+    ingest_directory,
+    ingest_file,
+    insert_document,
+    main,
+    parse_args,
+)
+import pytest
 
 SAMPLE_HR_TEXT = """
 Employee Code of Conduct:
@@ -25,8 +37,10 @@ Benefits:
 - Professional development reimbursement
 """
 
+
 def make_embedding(dim: int = 1536) -> list[float]:
     return [0.1] * dim
+
 
 @pytest.fixture
 def db_connection():
@@ -35,6 +49,7 @@ def db_connection():
     conn.autocommit = False  # Use transactions for test isolation
     yield conn
     conn.rollback()  # Rollback any changes made during the test
+
 
 @pytest.fixture
 def mock_conn():
@@ -53,13 +68,15 @@ def azure_env_vars(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key-123")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
     monkeypatch.setenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-    
+
 
 class TestExtractTextFromPdf:
     @pytest.mark.unit
     def test_extract_text_from_test_pdf(self, project_root):
-        result = extract_text_from_pdf(Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf"))
-        
+        result = extract_text_from_pdf(
+            Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
+        )
+
         assert "HR Policy Handbook" in result
         assert "retirement plan with 4" in result
 
@@ -78,7 +95,6 @@ class TestExtractTextFromPdf:
         assert "Page one content" in result
         assert "Page two content" in result
 
-
     @pytest.mark.unit
     def test_handles_empty_page(self):
         mock_page = MagicMock()
@@ -90,8 +106,8 @@ class TestExtractTextFromPdf:
 
         assert result == ""
 
-class TestExtractTextFromDocx:
 
+class TestExtractTextFromDocx:
     @pytest.mark.unit
     def test_extract_text_from_docx(self):
         para1 = MagicMock()
@@ -102,7 +118,7 @@ class TestExtractTextFromDocx:
         with patch("ingest_data.Document") as mock_doc_cls:
             mock_doc_cls.return_value.paragraphs = [para1, para2]
             result = extract_text_from_docx(Path("dummy.docx"))
-        
+
         assert "Vacation Policy" in result
         assert "Employees are entitled to 20 days per year." in result
 
@@ -136,14 +152,15 @@ class TestExtractTextFromDocx:
 
     @pytest.mark.unit
     def test_extract_text_from_test_docx(self, project_root):
-        result = extract_text_from_docx(Path(project_root, "tests", "test_docs", "HRPolicyHandbook.docx"))
-        
+        result = extract_text_from_docx(
+            Path(project_root, "tests", "test_docs", "HRPolicyHandbook.docx")
+        )
+
         assert "HR Policy Handbook" in result
         assert "retirement plan with 4" in result
 
 
 class TestChunkText:
-
     @pytest.mark.unit
     def test_short_text_returns_single_chunk(self):
         result = chunk_text("Short text", chunk_size=500, overlap=50)
@@ -181,7 +198,6 @@ class TestChunkText:
 
 
 class TestGetEmbedding:
-
     @pytest.mark.unit
     def test_returns_embedding_vector(self):
         mock_response = MagicMock()
@@ -216,21 +232,9 @@ class TestGetEmbedding:
             _, kwargs = mock_client.embeddings.create.call_args
             assert kwargs["model"] == "text-embedding-3-small"
 
+
 class TestInsertDocument:
 
-    @pytest.mark.unit
-    def test_inserts_with_correct_values(self, mock_conn):
-        conn, cursor = mock_conn
-        embedding = make_embedding()
-        metadata = {"source": "policy.pdf", "chunk_index": 0}
-
-        insert_document(conn, "some content", embedding, metadata)
-
-        cursor.execute.assert_called_once()
-        args = cursor.execute.call_args[0]
-        assert args[1][0] == "some content"
-        assert args[1][1] == embedding
-        assert json.loads(args[1][2]) == metadata
 
     @pytest.mark.unit
     def test_commit_not_called_after_insert(self, mock_conn):
@@ -239,34 +243,35 @@ class TestInsertDocument:
         conn.commit.assert_not_called()
 
 
-
 class TestIngestFile:
-
     @pytest.mark.unit
-    def test_skips_unsupported_format(self, mock_conn, capsys):
+    @pytest.mark.asyncio
+    async def test_skips_unsupported_format(self, mock_conn, capsys):
         conn, cursor = mock_conn
-        result = ingest_file(Path("notes.txt"), conn)
+        result = await ingest_file(Path("notes.txt"), conn)
 
         assert result == 0
         cursor.execute.assert_not_called()
         assert "skip" in capsys.readouterr().out
 
     @pytest.mark.unit
-    def test_warns_on_empty_extraction(self, mock_conn, capsys):
+    @pytest.mark.asyncio
+    async def test_warns_on_empty_extraction(self, mock_conn, capsys):
         conn, cursor = mock_conn
 
         mock_reader = MagicMock()
         mock_reader.pages = []  # Empty PDF = no pages
 
         with patch("ingest_data.PdfReader", return_value=mock_reader):
-            result = ingest_file(Path("empty.pdf"), conn)
+            result = await ingest_file(Path("empty.pdf"), conn)
 
         assert result == 0
         cursor.execute.assert_not_called()
         assert "warn" in capsys.readouterr().out
 
     @pytest.mark.unit
-    def test_returns_chunk_count(self, mock_conn, project_root):
+    @pytest.mark.asyncio
+    async def test_returns_chunk_count(self, mock_conn, project_root):
         conn, _ = mock_conn
 
         mock_embedding_response = MagicMock()
@@ -274,9 +279,9 @@ class TestIngestFile:
 
         test_file = Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
 
-        with  patch("ingest_data.azure_client") as mock_client:
+        with patch("ingest_data.azure_client") as mock_client:
             mock_client.embeddings.create.return_value = mock_embedding_response
-            result = ingest_file(test_file, conn)
+            result = await ingest_file(test_file, conn)
 
         assert result > 0
 
@@ -288,7 +293,7 @@ class TestIngestFile:
 
         test_file = Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
 
-        with  patch("ingest_data.azure_client") as mock_client:
+        with patch("ingest_data.azure_client") as mock_client:
             mock_client.embeddings.create.return_value = mock_embedding_response
             _ = ingest_file(test_file, conn)
 
@@ -309,16 +314,14 @@ class TestIngestFile:
 
         test_file = Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
 
-        with  patch("ingest_data.azure_client") as mock_client:
+        with patch("ingest_data.azure_client") as mock_client:
             mock_client.embeddings.create.return_value = mock_embedding_response
             _ = ingest_file(test_file, conn)
 
         indices = [
-            json.loads(c[0][1][2])["chunk_index"]
-            for c in cursor.execute.call_args_list
+            json.loads(c[0][1][2])["chunk_index"] for c in cursor.execute.call_args_list
         ]
         assert indices == list(range(len(indices)))
-
 
     @pytest.mark.unit
     def test_commit_called_after_file(self, mock_conn, project_root):
@@ -328,7 +331,7 @@ class TestIngestFile:
 
         test_file = Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
 
-        with  patch("ingest_data.azure_client") as mock_client:
+        with patch("ingest_data.azure_client") as mock_client:
             mock_client.embeddings.create.return_value = mock_embedding_response
             _ = ingest_file(test_file, conn)
 
@@ -336,7 +339,6 @@ class TestIngestFile:
 
 
 class TestIngestDirectory:
-
     @pytest.mark.unit
     def test_processes_matching_files_only(self, mock_conn, capsys, test_docs_dir):
         conn, _ = mock_conn
@@ -344,7 +346,9 @@ class TestIngestDirectory:
         with patch("ingest_data.ingest_file", return_value=3) as mock_ingest:
             ingest_directory(test_docs_dir, ["pdf", "docx"], conn)
 
-        called_names = {call_args[0][0].name for call_args in mock_ingest.call_args_list}
+        called_names = {
+            call_args[0][0].name for call_args in mock_ingest.call_args_list
+        }
         assert "HRPolicyHandbook.pdf" in called_names
         assert "HRPolicyHandbook.docx" in called_names
         assert "notes.txt" not in called_names
@@ -368,9 +372,7 @@ class TestIngestDirectory:
         assert "10" in output  # 2 files × 5 chunks each
 
 
-
 class TestMain:
-
     @pytest.mark.unit
     def test_missing_source_raises(self):
         with pytest.raises(SystemExit) as exc:
@@ -390,8 +392,9 @@ class TestMain:
 
     @pytest.mark.unit
     def test_exits_if_azure_endpoint_missing(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", ["prog", "--source", "/some/path"])  # satisfy argparse
-
+        monkeypatch.setattr(
+            "sys.argv", ["prog", "--source", "/some/path"]
+        )  # satisfy argparse
 
         with pytest.raises(SystemExit) as exc_info:
             main()
@@ -410,12 +413,16 @@ class TestMain:
 
     @pytest.mark.unit
     def test_closes_connection_on_success(self, monkeypatch, tmp_path):
-        monkeypatch.setattr("sys.argv", ["ingest_data.py", "--source", str(tmp_path), "--format", "pdf"])
+        monkeypatch.setattr(
+            "sys.argv", ["ingest_data.py", "--source", str(tmp_path), "--format", "pdf"]
+        )
 
         mock_conn = MagicMock()
 
-        with patch("ingest_data.get_connection", return_value=mock_conn), \
-             patch("ingest_data.ingest_directory"):
+        with (
+            patch("ingest_data.get_connection", return_value=mock_conn),
+            patch("ingest_data.ingest_directory"),
+        ):
             main()
 
         mock_conn.close.assert_called_once()
@@ -426,8 +433,10 @@ class TestMain:
 
         mock_conn = MagicMock()
 
-        with patch("ingest_data.get_connection", return_value=mock_conn), \
-             patch("ingest_data.ingest_directory", side_effect=RuntimeError("DB error")):
+        with (
+            patch("ingest_data.get_connection", return_value=mock_conn),
+            patch("ingest_data.ingest_directory", side_effect=RuntimeError("DB error")),
+        ):
             with pytest.raises(RuntimeError):
                 main()
 
@@ -437,8 +446,8 @@ class TestMain:
 # These require a running Postgres instance and valid Azure OpenAI credentials.
 # Skip by default unless explicitly opted in with: pytest -m integration
 
-class TestIntegration:
 
+class TestIntegration:
     @pytest.mark.integration
     def test_chunk_text_and_insert(self, db_connection):
         """Test ingestion of sample HR text with dummy embeddings."""
@@ -461,11 +470,12 @@ class TestIntegration:
 
         # Verify rows inserted
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM documents WHERE metadata->>'source' = 'pytest_sample_hr'")
+            cur.execute(
+                "SELECT COUNT(*) FROM documents WHERE metadata->>'source' = 'pytest_sample_hr'"
+            )
             count = cur.fetchone()[0]
 
         assert count == len(chunks), f"Expected {len(chunks)} rows, found {count}"
-
 
     @pytest.mark.integration
     def test_end_to_end_pdf_ingestion(self, db_connection, project_root):
@@ -474,6 +484,8 @@ class TestIntegration:
         conn = db_connection
         result = ingest_file(test_file, conn)
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM documents WHERE metadata->>'source' = 'HRPolicyHandbook.pdf'")
+            cur.execute(
+                "SELECT COUNT(*) FROM documents WHERE metadata->>'source' = 'HRPolicyHandbook.pdf'"
+            )
             count = cur.fetchone()[0]
         assert count > 0

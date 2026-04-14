@@ -6,20 +6,18 @@ Usage:
     python scripts/ingest_data.py --source ./data/hr-docs --format pdf,docx
 """
 
-import asyncio
-import asyncpg
-
 import argparse
+import asyncio
 import json
-import os
 from pathlib import Path
 
+import asyncpg
+from docx import Document
 from openai import AzureOpenAI
 from pypdf import PdfReader
-from docx import Document
 
 from app.config.settings import get_settings
- 
+
 settings = get_settings()
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -34,6 +32,7 @@ azure_client = AzureOpenAI(
 )
 
 # ── Text extraction ───────────────────────────────────────────────────────────
+
 
 def extract_text_from_pdf(path: Path) -> str:
     reader = PdfReader(str(path))
@@ -55,7 +54,10 @@ EXTRACTORS = {
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
 
-def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+
+def chunk_text(
+    text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
+) -> list[str]:
     chunks = []
     start = 0
     while start < len(text):
@@ -67,6 +69,7 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
 
+
 def get_embedding(text: str) -> list[float]:
     response = azure_client.embeddings.create(
         model=settings.azure_openai_embedding_model,
@@ -77,6 +80,7 @@ def get_embedding(text: str) -> list[float]:
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
+
 async def get_connection():
     """Return an asyncpg connection using settings as the single source of truth."""
     return await asyncpg.connect(
@@ -86,7 +90,6 @@ async def get_connection():
         user=settings.postgres_user,
         password=settings.postgres_password,
     )
-    
 
 
 async def insert_document(conn, content: str, embedding: list[float], metadata: dict):
@@ -104,6 +107,7 @@ async def insert_document(conn, content: str, embedding: list[float], metadata: 
         json.dumps(metadata),
     )
 
+
 # def insert_document(conn, content: str, embedding: list[float], metadata: dict):
 #     source = metadata.get("source", "unknown")  # fallback if source is missing in metadata
 #     print(f"    Inserting chunk from {source} (metadata: {metadata})...")
@@ -118,6 +122,7 @@ async def insert_document(conn, content: str, embedding: list[float], metadata: 
 
 
 # ── Main ingestion logic ──────────────────────────────────────────────────────
+
 
 async def ingest_file(path: Path, conn) -> int:
     ext = path.suffix.lower()
@@ -152,7 +157,9 @@ async def ingest_file(path: Path, conn) -> int:
 
 async def ingest_directory(source: Path, formats: list[str], conn) -> None:
     extensions = {f".{fmt.lower().strip('.')}" for fmt in formats}
-    files = [f for f in source.iterdir() if f.is_file() and f.suffix.lower() in extensions]
+    files = [
+        f for f in source.iterdir() if f.is_file() and f.suffix.lower() in extensions
+    ]
 
     if not files:
         print(f"No matching files found in {source} for formats: {formats}")
@@ -184,7 +191,9 @@ async def main():
     if not args.source.is_dir():
         raise SystemExit(f"Error: source path '{args.source}' is not a directory.")
 
-    print(f"Connecting to Postgres at {settings.postgres_host}:{settings.postgres_port}...")
+    print(
+        f"Connecting to Postgres at {settings.postgres_host}:{settings.postgres_port}..."
+    )
     conn = await get_connection()
 
     try:

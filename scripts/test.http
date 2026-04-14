@@ -10,7 +10,8 @@ Content-Type: application/json
 
 {
   "type": "message",
-  "text": "How many vacation days do I get?"
+  "text": "How many vacation days do I get?",
+  "employee_name": "John Doe"
 }
 
 ### OpenAPI

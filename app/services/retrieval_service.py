@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+import structlog
 
 from app.config.settings import get_settings
 from app.exceptions.errors import VectorStoreError
@@ -22,10 +22,11 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class DocumentChunk:
     """A retrieved document chunk returned from the vector store."""
+
     id: int
     content: str
     source: str
-    score: float        # cosine similarity score — higher is more relevant
+    score: float  # cosine similarity score — higher is more relevant
     metadata: dict
 
 
@@ -59,6 +60,7 @@ class RetrievalService:
             top_k: Number of chunks to return. Defaults to settings.vector_top_k.
             min_score: Minimum cosine similarity score (0-1). Chunks below this
                        threshold are excluded even if they are in the top-k.
+                       Defaults to settings.retrieval_min_score.
 
         Returns:
             List of DocumentChunk ordered by relevance (highest score first).
@@ -83,7 +85,12 @@ class RetrievalService:
             LIMIT :top_k
         """)
 
-        logger.info("query_vector received for search", vector_length=len(query_vector), top_k=k, min_score=min_score)
+        logger.info(
+            "query_vector received for search",
+            vector_length=len(query_vector),
+            top_k=k,
+            min_score=min_score,
+        )
 
         try:
             async with self._session_factory() as session:

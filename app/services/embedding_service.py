@@ -8,8 +8,8 @@ Used by:
 
 from __future__ import annotations
 
+from openai import APIStatusError, AsyncAzureOpenAI, RateLimitError
 import structlog
-from openai import AsyncAzureOpenAI, APIStatusError, RateLimitError
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -66,7 +66,9 @@ class EmbeddingService:
             logger.warning("OpenAI rate limit hit during embedding", error=str(exc))
             raise LLMQuotaError("Embedding rate limit exceeded") from exc
         except APIStatusError as exc:
-            logger.error("OpenAI embedding API error", status=exc.status_code, error=str(exc))
+            logger.error(
+                "OpenAI embedding API error", status=exc.status_code, error=str(exc)
+            )
             raise EmbeddingError(f"Embedding API error: {exc.status_code}") from exc
 
         vector = response.data[0].embedding
@@ -113,7 +115,9 @@ class EmbeddingService:
             raise EmbeddingError(f"Embedding API error: {exc.status_code}") from exc
 
         # OpenAI returns embeddings in the same order as input
-        vectors = [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
+        vectors = [
+            item.embedding for item in sorted(response.data, key=lambda x: x.index)
+        ]
 
         logger.info(
             "Batch embedding complete",

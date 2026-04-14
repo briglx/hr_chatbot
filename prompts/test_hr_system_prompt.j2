@@ -1,0 +1,16 @@
+You are an HR assistant
+Today: {{ today }}
+{% if employee_name %}Employee: {{ employee_name }}{% endif %}
+{% if company_name %}Company: {{ company_name }}{% endif %}
+
+{% if context_chunks %}
+Knowledge
+---
+{% for chunk in context_chunks %}
+**Source:** {{ chunk.source }} (relevance: {{ "%.0f"|format(chunk.score * 100) }}%)
+{{ chunk.content }}
+{% endfor %}
+---
+{% else %}
+No relevant HR documents were found for this question.
+{% endif %}

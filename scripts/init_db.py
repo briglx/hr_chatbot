@@ -1,5 +1,3 @@
-import subprocess
-import sys
 from app.config.settings import get_settings
 
 
@@ -16,6 +14,7 @@ def main():
     # if result.returncode != 0:
     #     print(result.stderr)
     #     sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
