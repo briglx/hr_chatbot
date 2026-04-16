@@ -258,6 +258,41 @@ kubectl apply -f infra/kubernetes/deployment.yaml
 
 ---
 
+## Other
+
+Setup Okta cli
+```bash
+# connect to machine that can run the installer
+az container exec \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "ACI_NAME" \
+  --exec-command "/bin/bash"
+
+# Run installer
+curl https://raw.githubusercontent.com/okta/okta-cli/master/cli/src/main/scripts/install.sh | bash
+
+# Ensure path is loaded
+export PATH=$HOME/bin:$PATH
+
+okta --version
+```
+
+Auth0 example
+```bash
+# Install
+curl -sSfL https://raw.githubusercontent.com/auth0/auth0-cli/main/install.sh | sh -s -- -b /usr/local/bin
+
+auth0 --version
+
+# Get an auth token
+export AUTH0_DEV_TOKEN=$(auth0 test token \
+    $AUTH0_CLIENT_ID \
+    --audience $AUTH0_AUDIENCE \
+    --scopes "openai:invoke")
+```
+
+---
+
 ## License
 
 Internal use only. See `LICENSE` for details.

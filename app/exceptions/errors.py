@@ -70,6 +70,13 @@ class EmbeddingError(RetrievalError):
 class VectorStoreError(RetrievalError):
     """Failed to connect to or query the vector database."""
 
+    
+class NoDocumentsFoundError(RetrievalError):
+    """No relevant documents found for a query."""
+
+    http_status = 404
+    user_message = "I couldn't find any relevant HR documents to answer your question."
+
 
 # ------------------------------------------------------------------ #
 # Session errors
@@ -84,3 +91,4 @@ class SessionError(HRBotError):
 
 class SessionStoreUnavailableError(SessionError):
     """Failed to connect to or read/write from the session store."""
+

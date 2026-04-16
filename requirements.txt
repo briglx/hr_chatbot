@@ -39,7 +39,8 @@ pypdf==6.9.2
 python-docx==1.2.0
 # office365-rest-python-client>=2.5.0   # SharePoint loader
 
-# # Security
+# Security
+requests==2.33.1
 # msal>=1.29.0                           # Azure AD token validation
 # presidio-analyzer>=2.2.354             # Optional: advanced PII detection
 # presidio-anonymizer>=2.2.354
