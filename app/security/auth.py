@@ -1,15 +1,15 @@
 # hr_chatbot/auth.py
 
-import os
 import time
 import requests
+import structlog
+from app.config.settings import get_settings, AppEnv
+
+logger = structlog.get_logger(__name__)
 
 _token_cache: dict = {"access_token": None, "expires_at": 0}
 
-
-def _is_local_dev() -> bool:
-    return os.getenv("ENV", "local") in ("local", "development")
-
+s = get_settings()
 
 # ------------------------------------------------------------------
 # PRODUCTION: Client Credentials against YOUR Auth0 API
@@ -19,10 +19,10 @@ def _get_token_client_credentials() -> str:
     Uses hr_chatbot's own client_id/secret to get a token scoped
     to your Kong gateway API (not the Auth0 Management API).
     """
-    domain = os.environ["AUTH0_DOMAIN"]           # e.g. mycompany.us.auth0.com
-    client_id = os.environ["AUTH0_CLIENT_ID"]     # hr_chatbot Application → Client ID
-    client_secret = os.environ["AUTH0_CLIENT_SECRET"]
-    audience = os.environ["AUTH0_AUDIENCE"]       # https://api.mycompany.com  ← your API identifier
+    domain = s.auth0_domain          # e.g. mycompany.us.auth0.com
+    client_id = s.auth0_client_id    # hr_chatbot Application → Client ID
+    client_secret = s.auth0_client_secret
+    audience = s.auth0_audience      # https://api.mycompany.com  ← your API identifier
 
     resp = requests.post(
         f"https://{domain}/oauth/token",
@@ -63,7 +63,7 @@ def _get_token_client_credentials() -> str:
 # Or add to .envrc / direnv so it auto-refreshes.
 # ------------------------------------------------------------------
 def _get_dev_token_from_env() -> str:
-    token = os.environ.get("AUTH0_DEV_TOKEN")
+    token = s.auth0_dev_token
     if not token:
         raise EnvironmentError(
             "\nAUTH0_DEV_TOKEN is not set.\n"
@@ -97,10 +97,12 @@ def _validate_token_audience(token: str) -> None:
         payload = json.loads(base64.b64decode(payload_b64))
 
         audience = payload.get("aud", "")
-        expected = os.environ["AUTH0_AUDIENCE"]
+        expected = s.auth0_audience
 
         # aud can be a string or a list
         aud_list = [audience] if isinstance(audience, str) else audience
+
+    
 
         if not any(expected in a for a in aud_list):
             raise ValueError(
@@ -108,6 +110,9 @@ def _validate_token_audience(token: str) -> None:
                 "You may have accidentally fetched a Management API token.\n"
                 "Re-run: auth0 test token --audience $AUTH0_AUDIENCE"
             )
+        
+        return payload
+    
     except (IndexError, KeyError):
         pass  # Malformed token — let Kong reject it with a clear 401
 
@@ -115,18 +120,29 @@ def _validate_token_audience(token: str) -> None:
 # ------------------------------------------------------------------
 # Unified token getter with in-memory cache
 # ------------------------------------------------------------------
-def get_access_token() -> str:
+def get_access_token(app_env=None, force_refresh=False) -> str:
+    print("HELLO")
+    logger.debug("fetching_access_token")
+    
     now = time.time()
-    if _token_cache["access_token"] and now < _token_cache["expires_at"] - 30:
+    if not force_refresh and _token_cache["access_token"] and now < _token_cache["expires_at"] - 30:
+        logger.debug("using_cached_access_token", expires_in=int(_token_cache["expires_at"] - now))
         return _token_cache["access_token"]
 
-    if _is_local_dev():
+   
+    if app_env is None:
+        app_env = s.app_env
+
+    if app_env == AppEnv.DEVELOPMENT:
+        logger.debug("fetching_dev_token_from_env")
         access_token = _get_dev_token_from_env()
     else:
+        logger.debug("fetching_token_client_credentials")
         access_token = _get_token_client_credentials()
 
-    _validate_token_audience(access_token)
+    logger.debug("validating_token_audience")
+    payload = _validate_token_audience(access_token)
 
     _token_cache["access_token"] = access_token
     _token_cache["expires_at"] = now + 3600
-    return access_token
+    return (payload, access_token)

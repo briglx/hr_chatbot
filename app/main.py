@@ -1,13 +1,16 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import structlog
 
-from app.api.routes import router
+from app.api.routes import router as api_router
 from app.config.logging import setup_logging
 from app.config.settings import get_settings
 from app.memory.stores.redis_store import RedisStore
+from fastapi.templating import Jinja2Templates
 
 setup_logging()
 logger = structlog.get_logger()
@@ -19,6 +22,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger = structlog.get_logger()
     logger.info("Starting up...")
     settings = get_settings()
+
+    logger.info("Connecting to Redis at ", url=settings.redis_url)
     redis_store = RedisStore(settings.redis_url)
     await redis_store.connect()
 
@@ -38,11 +43,18 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.include_router(router)
+    app.include_router(api_router)
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+    templates = Jinja2Templates(directory="app/templates")
 
     @app.get("/health")
     async def health_check() -> dict:
         return {"status": "ok"}
+    
+    @app.get("/", response_class=HTMLResponse)
+    async def root(request: Request):
+        return templates.TemplateResponse(request=request, name="index.html")
+
 
     return app
 

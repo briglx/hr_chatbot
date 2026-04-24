@@ -20,6 +20,15 @@ FastAPI app (main.py)
       ├── LLM service         → OpenAI (GPT-4o) with grounded prompt
       ├── PII filter          → Redact before logging, redact before sending
       └── Observability       → LangSmith tracing + token/latency metrics
+
+Also
+
+Test App
+      │
+      ▼
+FastAPI app (main.py)
+
+
 ```
 
 ### Key design decisions
@@ -52,10 +61,8 @@ FastAPI app (main.py)
 git clone path/to/repo
 cd hr-ai-chatbot
 
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements_dev.txt
 ```
 
 ### 2. Configure environment
@@ -75,6 +82,7 @@ cp .env.example .env
 
 ```bash
 docker run -d --name local-redis -p 6379:6379 redis:7-alpine
+docker start local-redis # Run a stopped image
 ```
 
 ### 4. Set up the vector database
@@ -102,16 +110,25 @@ python scripts/ingest_data.py --source ./tests/test_docs --format pdf,docx
 python -m scripts.ingest_data --source ./tests/test_docs
 ```
 
-### 6. Run the app
+### 6. Run the api app
 
 ```bash
 bash scripts/run_local.sh
 # or:
 uvicorn app.main:app --reload --port 8000
+# or
+uv run uvicorn app.main:app
 ```
 
 Use [ngrok](https://ngrok.com/) or [Dev Tunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/) to expose `localhost:8000` for Teams to reach your bot during development.
 
+### 7. Run the Test app
+
+```bash
+cd ./front_end
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 ---
 
 ## Environment variables
@@ -135,6 +152,7 @@ AZURE_CLIENT_SECRET=
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
+REDIS_URL=redis://host.docker.internal:6379/0
 
 # Vector database (choose one)
 VECTOR_STORE=pgvector          # or: azure_ai_search
@@ -289,6 +307,11 @@ export AUTH0_DEV_TOKEN=$(auth0 test token \
     $AUTH0_CLIENT_ID \
     --audience $AUTH0_AUDIENCE \
     --scopes "openai:invoke")
+
+# Login as user
+auth0 login
+
+# token stored in ~/.config/auth0/config.json
 ```
 
 ---

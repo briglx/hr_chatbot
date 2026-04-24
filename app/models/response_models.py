@@ -16,3 +16,9 @@ class MessageResponse(BaseModel):
     embedding_preview: list[float]
     chunks: list[ChunkResult]
     messages: list[dict]
+
+class Conversation(BaseModel):
+    id: str
+    object: str = "conversation"
+    created_at: int
+    metadata: dict

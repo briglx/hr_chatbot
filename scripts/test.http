@@ -4,15 +4,47 @@ GET http://localhost:8000/health
 ### Ping
 GET http://localhost:8000/api/ping
 
-### Teams message (simulated)
-POST http://localhost:8000/api/messages
+
+
+### Create new conversation
+POST http://localhost:8000/api/conversations
 Content-Type: application/json
 
 {
-  "type": "message",
-  "text": "How many vacation days do I get?",
-  "employee_name": "John Doe"
+  "metadata": {"topic": "demo"}
+}
+
+### Get a Conversation
+GET http://localhost:8000/api/conversations/conv_123
+Content-Type: application/json
+
+### New message
+POST http://localhost:8000/api/conversations/conv_123/messages
+Content-Type: application/json
+
+{
+  
+  "metadata": {"topic": "demo"},
+  "parent_message_id": "msg_123",
+  "messages": [
+      {
+        "role": "user",
+        "content": "How many vacation days do I get?",
+        "create_time":1776707770
+      }
+    ],
+  "context": {
+    "timezone_offset_min":420,
+    "timezone":"America/Phoenix",
+    "locale": "en-US"
+  },
+  "client": {
+    "channel": "webchat",
+    "deviceId": "optional-browser-id",
+    "userId": "user-j8bmcV3K3w2pFojdbRcPM3O8",
+  },
 }
 
 ### OpenAPI
 GET http://localhost:8000/docs
+

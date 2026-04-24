@@ -92,3 +92,12 @@ class SessionError(HRBotError):
 class SessionStoreUnavailableError(SessionError):
     """Failed to connect to or read/write from the session store."""
 
+# ------------------------------------------------------------------ #
+# Conversation errors
+# ------------------------------------------------------------------ #
+
+class ConversationNotFoundError(HRBotError):
+    """The specified conversation ID does not exist."""
+
+    http_status = 404
+    user_message = "I couldn't find that conversation. Please check the conversation ID and try again."

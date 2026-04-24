@@ -7,9 +7,8 @@ echo "Requesting access token from Auth0..."
 echo "Token URL: $TOKEN_URL"
 
 # Make the POST request to get the token
-
-response=$(curl -s -X POST \
-    "$TOKEN_URL" \
+response=$(curl --request POST  \
+    --url "$TOKEN_URL" \
     --header 'content-type: application/json' \
     --data '{
       "client_id":"'"$AUTH0_CLIENT_ID"'",
@@ -17,8 +16,6 @@ response=$(curl -s -X POST \
       "audience":"'"$AUTH0_AUDIENCE"'",
       "grant_type":"client_credentials"
     }')
-
-echo "Response from Auth0: $response"
 
 # Extract the access token from the response
 access_token=$(echo "$response" | jq -r '.access_token')

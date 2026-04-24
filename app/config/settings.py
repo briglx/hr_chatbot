@@ -56,6 +56,21 @@ class Settings(BaseSettings):
     # microsoft_app_password: str = Field(default="", description="Azure Bot app password")
 
     # ------------------------------------------------------------------ #
+    # Auth0
+    # ------------------------------------------------------------------ #
+    auth0_domain: str = Field(default="", description="Auth0 domain, e.g. mycompany.us.auth0.com")
+    auth0_client_id: str = Field(default="", description="Auth0 application client ID")
+    auth0_client_secret: str = Field(default="", description="Auth0 application client secret")
+    auth0_audience: str = Field(default="", description="Auth0 API identifier (audience) for token requests")
+    auth0_dev_token: str = Field(
+        default="",
+        description=(
+            "Development token for local testing. Must be a long-lived token with the "
+            "openai:invoke scope, obtained via `auth0 test token` or the Auth0 dashboard."
+        ),
+    )
+
+    # ------------------------------------------------------------------ #
     # Azure AD
     # ------------------------------------------------------------------ #
     # azure_tenant_id: str = Field(default="", description="Azure AD tenant ID")
@@ -65,7 +80,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Redis (session store + semantic cache)
     # ------------------------------------------------------------------ #
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = Field(default="", description="Redis connection URL, e.g. redis://localhost:6379/0")
     session_ttl_seconds: int = 3600
     max_conversation_turns: int = 20
     cache_similarity_threshold: float = Field(

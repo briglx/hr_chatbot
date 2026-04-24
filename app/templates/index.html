@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HR Assistant — People Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 2L14 6v6l-5 4-5-4V6l5-4z" fill="#0e100f"/>
+      </svg>
+    </div>
+    <span class="logo-name">People<span>Portal</span></span>
+  </div>
+  <div class="header-right" id="header-right">
+    <button class="btn btn-ghost" onclick="showLogin()">Sign in</button>
+  </div>
+</header>
+
+<!-- ── App ── -->
+<div class="app">
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-badge">HR Assistant · Live</div>
+      <h1 class="login-heading">Ask anything about <em>your benefits</em></h1>
+      <p class="login-sub">Sign in with your corporate account to chat with the HR assistant — policies, leave, onboarding, and more.</p>
+
+      <!-- SSO button -->
+      <button class="login-btn-main" id="sso-btn" onclick="handleSSO()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.9"/><rect x="10" y="1" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.6"/><rect x="1" y="10" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.6"/><rect x="10" y="10" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.3"/></svg>
+        Continue with Microsoft
+      </button>
+
+      <div class="login-divider"><span>or sign in directly</span></div>
+
+      <div class="login-form">
+        <div class="form-group">
+          <label>Work email</label>
+          <input type="email" id="login-email" placeholder="you@company.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+          <span class="form-error" id="login-error">Invalid credentials. Please try again.</span>
+        </div>
+        <button class="login-btn-main" id="login-btn" onclick="handleLogin()" style="margin-top:4px;">
+          Sign in
+        </button>
+      </div>
+
+      <p class="login-footer-note">
+        Access is restricted to company employees. By signing in you agree to our <a href="#">usage policy</a>. Questions? Contact <a href="mailto:hr@company.com">hr@company.com</a>.
+      </p>
+    </div>
+  </div>
+
+  <!-- CHAT SCREEN -->
+  <div id="chat-screen">
+    <div class="welcome-banner">
+      <div class="welcome-text">
+        <h2>Hello, <em id="user-first-name">there</em></h2>
+        <p>Ask me about policies, benefits, leave, or onboarding.</p>
+      </div>
+    </div>
+
+    <div class="chips" id="chips">
+      <div class="chip" onclick="sendChip(this)">What's our parental leave policy?</div>
+      <div class="chip" onclick="sendChip(this)">How do I request PTO?</div>
+      <div class="chip" onclick="sendChip(this)">Explain my health benefits</div>
+      <div class="chip" onclick="sendChip(this)">New hire onboarding checklist</div>
+      <div class="chip" onclick="sendChip(this)">401(k) matching details</div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span>Connected to HR knowledge base</span>
+    </div>
+
+    <div id="messages">
+      <div class="empty-state" id="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <path d="M24 4L40 12v12c0 10-7 18-16 20C15 42 8 34 8 24V12L24 4z" stroke="currentColor" stroke-width="2"/>
+          <circle cx="24" cy="22" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 34c1-4 4-6 7-6s6 2 7 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p>Your conversation is private and grounded in your company's official HR documents.</p>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="typing-indicator" id="typing">
+      <div class="msg-avatar bot-avatar">HR</div>
+      <div class="typing-dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-bar">
+      <div class="input-wrap">
+        <textarea id="user-input" rows="1" placeholder="Ask about policies, benefits, leave…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+          <svg viewBox="0 0 16 16" fill="none"><path d="M2 8l12-6-5 6 5 6z" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <p class="input-hint">Answers are grounded in your company's HR documents · <span id="session-info"></span></p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+
+</body>
+</html>

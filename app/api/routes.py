@@ -1,20 +1,21 @@
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Path, HTTPException
 import structlog
 from structlog import contextvars
 
 from app.rag.pipeline import RAGPipeline
 from app.memory.session_manager import SessionManager
-from app.models.request_models import MessageRequest
-from app.models.response_models import MessageResponse
+from app.models.request_models import MessageRequest, CreateConversationRequest
+from app.models.response_models import MessageResponse, Conversation
 from app.services.embedding_service import EmbeddingService
 from app.services.prompt_service import PromptService
 from app.services.retrieval_service import RetrievalService
+from app.services.conversation_service import ConversationService
 from app.services.llm_service import LLMService
 from app.security.pii_filter import PIIFilter
-from app.exceptions.errors import NoDocumentsFoundError
+from app.exceptions.errors import NoDocumentsFoundError, ConversationNotFoundError
 
 
 logger = structlog.get_logger(__name__)
@@ -46,6 +47,39 @@ def get_rag_pipeline(
 @router.get("/ping")
 async def ping() -> dict:
     return {"message": "pong"}
+
+
+# /api/conversations
+@router.post("/conversations", response_model=Conversation)
+async def create_conversation(
+    body: CreateConversationRequest,
+    conversation_service: ConversationService = Depends(ConversationService),
+) -> Conversation:
+    # conversations = await session_manager.list_conversations()
+    conversation = await conversation_service.create_conversation(
+        metadata=body.metadata,
+        items=body.items,
+    )
+    
+    return conversation
+
+@router.get("/conversations/{id}", response_model=Conversation)
+async def create_conversation(
+    id: str = Path(..., description="The conversation ID"),
+    conversation_service: ConversationService = Depends(ConversationService),
+) -> Conversation:
+    # conversations = await session_manager.list_conversations()
+    conversation = await conversation_service.get_conversation(id)
+
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "conversation_not_found", "message": f"Conversation '{id}' not found"}
+        )
+       
+
+    
+    return conversation
 
 
 @router.post("/messages", response_model=MessageResponse)
