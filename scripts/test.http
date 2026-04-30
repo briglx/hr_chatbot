@@ -5,6 +5,7 @@ GET http://localhost:8000/health
 GET http://localhost:8000/api/ping
 
 
+### Conversation #######################################################################
 
 ### Create new conversation
 POST http://localhost:8000/api/conversations
@@ -23,8 +24,7 @@ Content-Type: application/json
   "messages": [
       {
         "role": "user",
-        "content": "How many vacation days do I get?",
-        "create_time":1776707770
+        "content": "How many vacation days do I get?"
       }
     ],
   "context": {
@@ -43,19 +43,25 @@ Content-Type: application/json
 GET http://localhost:8000/api/conversations/conv_123
 Content-Type: application/json
 
-### New message
+
+### Get a Conversation messages
+GET http://localhost:8000/api/conversations/conv_123/messages
+Content-Type: application/json
+
+### Get a Conversation message
+GET http://localhost:8000/api/conversations/conv_123/messages/345
+Content-Type: application/json
+
+### Post new conversation message
 POST http://localhost:8000/api/conversations/conv_123/messages
 Content-Type: application/json
 
 {
-  
   "metadata": {"topic": "demo"},
-  "parent_message_id": "msg_123",
   "messages": [
       {
         "role": "user",
-        "content": "How many vacation days do I get?",
-        "create_time":1776707770
+        "content": "Come one, let's do this!!!"
       }
     ],
   "context": {
@@ -66,9 +72,10 @@ Content-Type: application/json
   "client": {
     "channel": "webchat",
     "deviceId": "optional-browser-id",
-    "userId": "user-j8bmcV3K3w2pFojdbRcPM3O8",
-  },
+    "userId": "user-j8bmcV3K3w2pFojdbRcPM3O8"
+  }
 }
+
 
 ### OpenAPI
 GET http://localhost:8000/docs

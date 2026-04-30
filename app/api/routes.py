@@ -7,8 +7,7 @@ from structlog import contextvars
 
 from app.rag.pipeline import RAGPipeline
 from app.memory.session_manager import SessionManager
-from app.models.request_models import MessageRequest, CreateConversationRequest
-from app.models.response_models import MessageResponse, Conversation
+from app.models.conversations_models import Conversation, ConversationCreate, ConversationItemList, Message, ConversationItemListCreate
 from app.services.embedding_service import EmbeddingService
 from app.services.prompt_service import PromptService
 from app.services.retrieval_service import RetrievalService
@@ -26,8 +25,6 @@ router = APIRouter(prefix="/api")
 # Dependency providers
 # -----------------------------------------------------------------------
 
-
-
 def get_session_manager(request: Request) -> SessionManager:
     return SessionManager(request.app.state.redis_store)
 
@@ -44,23 +41,32 @@ def get_rag_pipeline(
     )
 
 
+# -----------------------------------------------------------------------
+# Health check routes
+# -----------------------------------------------------------------------
+
 @router.get("/ping")
 async def ping() -> dict:
     return {"message": "pong"}
 
 
+# -----------------------------------------------------------------------
+# Conversation routes
+# -----------------------------------------------------------------------
+
 # /api/conversations
 @router.post("/conversations", response_model=Conversation)
 async def create_conversation(
-    body: CreateConversationRequest,
+    body: ConversationCreate,
     conversation_service: ConversationService = Depends(ConversationService),
 ) -> Conversation:
     # conversations = await session_manager.list_conversations()
     conversation = await conversation_service.create_conversation(
         metadata=body.metadata,
-        items=body.items,
+        messages=body.messages,
     )
     
+
     return conversation
 
 @router.get("/conversations/{id}", response_model=Conversation)
@@ -71,14 +77,6 @@ async def create_conversation(
     # conversations = await session_manager.list_conversations()
     conversation = await conversation_service.get_conversation(id)
 
-    # TEMP
-    if not conversation:
-        conversation = Conversation(
-            id=id,
-            created_at=int(time.time()),
-            metadata={"topic": "demo"},
-        )
-
     if not conversation:
         raise HTTPException(
             status_code=404,
@@ -87,6 +85,98 @@ async def create_conversation(
     
     return conversation
 
+
+
+@router.get("/conversations/{id}/messages", response_model=ConversationItemList)
+async def get_conversation_messages(
+    id: str = Path(..., description="The conversation ID"),
+    conversation_service: ConversationService = Depends(ConversationService),
+) -> ConversationItemList:
+    # conversations = await session_manager.list_conversations()
+    conversation = await conversation_service.get_conversation(id)
+
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "conversation_not_found", "message": f"Conversation '{id}' not found"}
+        )
+    
+    messages = ConversationItemList(
+        object="list",
+        data=conversation.messages,
+        first_id=conversation.messages[0].id if conversation.messages else None,
+        last_id=conversation.messages[-1].id if conversation.messages else None,
+        has_more=False,  # TODO: Implement pagination
+    )
+    
+    return messages
+
+
+@router.get("/conversations/{conversation_id}/messages/{message_id}", response_model=Message)
+async def get_conversation_message(
+    conversation_id: str = Path(..., description="The conversation ID"),
+    message_id: str = Path(..., description="The message ID"),
+    conversation_service: ConversationService = Depends(ConversationService),
+) -> Message:
+    conversation = await conversation_service.get_conversation(conversation_id)
+
+    if not conversation:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "conversation_not_found", "message": f"Conversation '{id}' not found"}
+        )
+    
+    # find matching message
+    for message in conversation.messages:
+        if message.id == message_id:
+            return message
+        
+
+    return conversation.messages[0]
+    
+
+    
+    raise HTTPException(
+            status_code=404,
+            detail={"error": "message_not_found", "message": f"Message '{id}' not found"}
+        )
+
+
+@router.post("/conversations/{conversation_id}/messages", response_model=ConversationItemList)
+async def create_conversation_messages(
+    body: ConversationItemListCreate,
+    conversation_id: str = Path(..., description="The conversation ID"),
+    conversation_service: ConversationService = Depends(ConversationService),
+) -> ConversationItemList:
+    # conversations = await session_manager.list_conversations()
+    conversation = await conversation_service.get_conversation(conversation_id)
+
+    # TEMP
+    if not conversation:
+        conversation = Conversation(
+            id=id,
+            created_at=int(time.time()),
+            metadata={"topic": "demo"},
+        )
+
+    # TODO: Add new messages to conversation
+    for message in body.messages:
+        conversation = await conversation_service.append_conversation_message(
+            conversation,
+            role=message.role,
+            content=message.content,
+        )
+
+    response = ConversationItemList(
+        object="list",
+        data=conversation.messages,
+        first_id=conversation.messages[0].id if conversation.messages else None,
+        last_id=conversation.messages[-1].id if conversation.messages else None,
+        has_more=False,  # TODO: Implement pagination
+    )
+
+    
+    return response
 # @router.post("/conversations/{conversation_id}/messages", response_model=ChatRequest)
 # async def create_conversation(
 #     conversation_id: str = Path(..., description="The conversation ID"),
@@ -106,39 +196,39 @@ async def create_conversation(
     
 #     return conversation
 
-@router.post("/messages", response_model=MessageResponse)
-async def messages(
-    request: MessageRequest,
-    pipeline: RAGPipeline = Depends(get_rag_pipeline),
-) -> MessageResponse:
-    start_time = time.perf_counter()
-    trace_id = str(uuid.uuid4())
+# @router.post("/messages", response_model=MessageResponse)
+# async def messages(
+#     request: MessageRequest,
+#     pipeline: RAGPipeline = Depends(get_rag_pipeline),
+# ) -> MessageResponse:
+#     start_time = time.perf_counter()
+#     trace_id = str(uuid.uuid4())
 
-    contextvars.clear_contextvars()
-    contextvars.bind_contextvars(
-        trace_id=trace_id, employee_name=request.employee_name or "anonymous"
-    )
+#     contextvars.clear_contextvars()
+#     contextvars.bind_contextvars(
+#         trace_id=trace_id, employee_name=request.employee_name or "anonymous"
+#     )
 
-    logger.info("request_started", text=request.text)
+#     logger.info("request_started", text=request.text)
 
     
-    try:
-        answer = await pipeline.answer(
-            raw_query=request.text,
-            employee_name=request.employee_name,
-            company_name=request.company_name,
-        )
-    except NoDocumentsFoundError as exc:
-        answer = exc.user_message
+#     try:
+#         answer = await pipeline.answer(
+#             raw_query=request.text,
+#             employee_name=request.employee_name,
+#             company_name=request.company_name,
+#         )
+#     except NoDocumentsFoundError as exc:
+#         answer = exc.user_message
  
-    duration_ms = (time.perf_counter() - start_time) * 1000
-    logger.info("request_finished", latency_ms=round(duration_ms, 2))
+#     duration_ms = (time.perf_counter() - start_time) * 1000
+#     logger.info("request_finished", latency_ms=round(duration_ms, 2))
 
-    return MessageResponse(
-        status="ok",
-        text=request.text,
-        answer=answer,
-    )
+#     return MessageResponse(
+#         status="ok",
+#         text=request.text,
+#         answer=answer,
+#     )
 
     # start_time = time.perf_counter()
     # trace_id = str(uuid.uuid4())
