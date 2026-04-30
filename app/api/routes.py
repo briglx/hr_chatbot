@@ -71,16 +71,40 @@ async def create_conversation(
     # conversations = await session_manager.list_conversations()
     conversation = await conversation_service.get_conversation(id)
 
+    # TEMP
+    if not conversation:
+        conversation = Conversation(
+            id=id,
+            created_at=int(time.time()),
+            metadata={"topic": "demo"},
+        )
+
     if not conversation:
         raise HTTPException(
             status_code=404,
             detail={"error": "conversation_not_found", "message": f"Conversation '{id}' not found"}
         )
-       
-
     
     return conversation
 
+# @router.post("/conversations/{conversation_id}/messages", response_model=ChatRequest)
+# async def create_conversation(
+#     conversation_id: str = Path(..., description="The conversation ID"),
+#     body: MessageRequest,
+#     conversation_service: ConversationService = Depends(ConversationService),
+# ) -> Conversation:
+#     # conversations = await session_manager.list_conversations()
+#     conversation = await conversation_service.get_conversation(conversation_id)
+
+#     if not conversation:
+#         raise HTTPException(
+#             status_code=404,
+#             detail={"error": "conversation_not_found", "message": f"Conversation '{id}' not found"}
+#         )
+    
+#     user_message = body.messages[0] 
+    
+#     return conversation
 
 @router.post("/messages", response_model=MessageResponse)
 async def messages(

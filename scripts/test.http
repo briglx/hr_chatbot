@@ -14,6 +14,31 @@ Content-Type: application/json
   "metadata": {"topic": "demo"}
 }
 
+### Create new conversation with items
+POST http://localhost:8000/api/conversations
+Content-Type: application/json
+
+{
+  "metadata": {"topic": "demo"},
+  "messages": [
+      {
+        "role": "user",
+        "content": "How many vacation days do I get?",
+        "create_time":1776707770
+      }
+    ],
+  "context": {
+    "timezone_offset_min":420,
+    "timezone":"America/Phoenix",
+    "locale": "en-US"
+  },
+  "client": {
+    "channel": "webchat",
+    "deviceId": "optional-browser-id",
+    "userId": "user-j8bmcV3K3w2pFojdbRcPM3O8"
+  }
+}
+
 ### Get a Conversation
 GET http://localhost:8000/api/conversations/conv_123
 Content-Type: application/json

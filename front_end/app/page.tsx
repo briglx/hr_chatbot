@@ -12,14 +12,42 @@ export default function HomePage() {
   const handleSend = async (content: string) => {
     setIsLoading(true)
 
-    // Create a new conversation, then navigate into it
+    const payload = {
+      metadata: { topic: "demo" },
+      parent_message_id: "",
+      messages: [
+        {
+          role: "user",
+          content: content,
+          create_time: Math.floor(Date.now() / 1000)
+        }
+      ],
+      context: {
+        timezone_offset_min: new Date().getTimezoneOffset(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        locale: navigator.language || "en-US"
+      },
+      client: {
+        channel: "webchat",
+        deviceId: localStorage.getItem('deviceId') || crypto.randomUUID(),
+        userId: localStorage.getItem('userId') || `user-${crypto.randomUUID()}`
+      }
+    }
+
+    // Save deviceId and userId for subsequent requests
+    localStorage.setItem('deviceId', payload.client.deviceId)
+    localStorage.setItem('userId', payload.client.userId)
+
     const res = await fetch('/api/conversations', {
       method: 'POST',
-      body: JSON.stringify({ firstMessage: content }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     })
     const { id } = await res.json()
 
-    router.push(`/chat/${id}`)
+    router.push(`/chat/conv-2`)
   }
 
   return (

@@ -41,3 +41,18 @@ class ConversationService:
             created_at=int(time.time()),
             metadata={},
         )
+    
+
+    async def get_history(self, conversation_id: str) -> list[Message]:
+        if conversation_id in self._cache:
+            return self._cache[conversation_id]  # fast path
+
+        # cold load from DB, populate cache
+        messages = await db.fetch_messages(conversation_id)
+        self._cache[conversation_id] = messages
+        return messages
+
+    async def append_message(self, conversation_id: str, message: Message):
+        # write to both
+        self._cache.setdefault(conversation_id, []).append(message)
+        await db.insert_message(conversation_id, message)
