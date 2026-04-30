@@ -1,6 +1,6 @@
-"""Document chunking — splits raw document text into overlapping chunks
-suitable for embedding and storage in the vector database.
+"""Document chunking — splits raw document text into overlapping chunks.
 
+Suitable for embedding and storage in the vector database.
 Two strategies are provided:
 - fixed_size: splits by character count with overlap
 - sentence: splits on sentence boundaries, groups into chunks by token estimate
@@ -8,15 +8,17 @@ Two strategies are provided:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+import re
 
 
 @dataclass
 class Chunk:
+    """Represents a chunk of text extracted from a larger document, along with metadata about its position in the original text."""
+
     content: str
-    index: int          # position of this chunk in the original document
-    char_start: int     # character offset in the original text
+    index: int  # position of this chunk in the original document
+    char_start: int  # character offset in the original text
     char_end: int
 
 
@@ -31,12 +33,14 @@ def fixed_size(
     the last `overlap` characters of each chunk are repeated at the start
     of the next.
 
-    Args:
+    Parameters:
+    ----------
         text: Raw document text.
         chunk_size: Maximum characters per chunk.
         overlap: Number of characters to repeat between adjacent chunks.
 
     Returns:
+    ----------
         List of Chunk objects in document order.
     """
     if not text or not text.strip():
@@ -51,12 +55,14 @@ def fixed_size(
         content = text[start:end].strip()
 
         if content:
-            chunks.append(Chunk(
-                content=content,
-                index=index,
-                char_start=start,
-                char_end=end,
-            ))
+            chunks.append(
+                Chunk(
+                    content=content,
+                    index=index,
+                    char_start=start,
+                    char_end=end,
+                )
+            )
             index += 1
 
         start += chunk_size - overlap
@@ -74,13 +80,15 @@ def sentence_based(
     Produces more semantically coherent chunks than fixed_size since sentences
     are never split in the middle. Token count is estimated at 4 chars per token.
 
-    Args:
+    Parameters:
+    -------
         text: Raw document text.
         max_tokens: Approximate maximum tokens per chunk (4 chars per token).
         overlap_sentences: Number of sentences from the end of each chunk to
                            repeat at the start of the next.
 
     Returns:
+    -------
         List of Chunk objects in document order.
     """
     if not text or not text.strip():
@@ -113,12 +121,14 @@ def sentence_based(
         content = " ".join(current_sentences).strip()
         char_start = text.find(current_sentences[0])
 
-        chunks.append(Chunk(
-            content=content,
-            index=index,
-            char_start=char_start,
-            char_end=char_start + len(content),
-        ))
+        chunks.append(
+            Chunk(
+                content=content,
+                index=index,
+                char_start=char_start,
+                char_end=char_start + len(content),
+            )
+        )
         index += 1
 
         # step back by overlap_sentences for the next chunk
@@ -130,5 +140,5 @@ def sentence_based(
 
 def _split_sentences(text: str) -> list[str]:
     """Split text into sentences on '.', '!', '?' boundaries."""
-    raw = re.split(r'(?<=[.!?])\s+', text.strip())
+    raw = re.split(r"(?<=[.!?])\s+", text.strip())
     return [s.strip() for s in raw if s.strip()]

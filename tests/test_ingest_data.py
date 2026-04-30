@@ -175,16 +175,18 @@ class TestChunkText:
     @pytest.mark.unit
     def test_chunks_respect_size(self):
         text = "B" * 1000
-        result = chunk_text(text, chunk_size=200, overlap=0)
+        chunk_size = 200
+        result = chunk_text(text, chunk_size=chunk_size, overlap=0)
         for chunk in result:
-            assert len(chunk) <= 200
+            assert len(chunk) <= chunk_size
 
     @pytest.mark.unit
     def test_overlap_means_chunks_share_content(self):
         text = "X" * 100
         result = chunk_text(text, chunk_size=60, overlap=20)
         # With overlap, second chunk starts at index 40, which overlaps with first chunk's [40:60]
-        assert len(result) >= 2
+        expected_min_chunks = 2
+        assert len(result) >= expected_min_chunks
 
     @pytest.mark.unit
     def test_empty_text_returns_empty_list(self):
@@ -202,13 +204,14 @@ class TestGetEmbedding:
     def test_returns_embedding_vector(self):
         mock_response = MagicMock()
         mock_response.data[0].embedding = make_embedding()
+        expected_length = 1536
 
         with patch("ingest_data.azure_client") as mock_client:
             mock_client.embeddings.create.return_value = mock_response
             result = get_embedding("some HR text")
 
         assert isinstance(result, list)
-        assert len(result) == 1536
+        assert len(result) == expected_length
 
     @pytest.mark.unit
     def test_strips_newlines_from_input(self):
@@ -234,8 +237,6 @@ class TestGetEmbedding:
 
 
 class TestInsertDocument:
-
-
     @pytest.mark.unit
     def test_commit_not_called_after_insert(self, mock_conn):
         conn, _ = mock_conn
@@ -369,15 +370,16 @@ class TestIngestDirectory:
             ingest_directory(test_docs_dir, ["pdf", "docx"], conn)
 
         output = capsys.readouterr().out
-        assert "10" in output  # 2 files × 5 chunks each
+        assert "10" in output  # 2 files × 5 chunks each # noqa: RUF003
 
 
 class TestMain:
     @pytest.mark.unit
     def test_missing_source_raises(self):
+        exit_code_failed = 2
         with pytest.raises(SystemExit) as exc:
             parse_args([])  # --source is required, so argparse calls sys.exit(2)
-        assert exc.value.code == 2
+        assert exc.value.code == exit_code_failed
 
     @pytest.mark.unit
     def test_valid_args(self):
@@ -434,11 +436,15 @@ class TestMain:
         mock_conn = MagicMock()
 
         with (
-            patch("ingest_data.get_connection", return_value=mock_conn),
-            patch("ingest_data.ingest_directory", side_effect=RuntimeError("DB error")),
+            (
+                patch("ingest_data.get_connection", return_value=mock_conn),
+                patch(
+                    "ingest_data.ingest_directory", side_effect=RuntimeError("DB error")
+                ),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                main()
+            main()
 
         mock_conn.close.assert_called_once()
 
@@ -482,7 +488,7 @@ class TestIntegration:
         """Ingests a real (minimal) PDF and checks a row lands in the DB."""
         test_file = Path(project_root, "tests", "test_docs", "HRPolicyHandbook.pdf")
         conn = db_connection
-        result = ingest_file(test_file, conn)
+        _ = ingest_file(test_file, conn)
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT COUNT(*) FROM documents WHERE metadata->>'source' = 'HRPolicyHandbook.pdf'"

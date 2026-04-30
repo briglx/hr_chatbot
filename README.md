@@ -213,6 +213,12 @@ Supported formats: `.pdf`, `.docx`, `.txt`, `.md`
 ## Testing
 
 ```bash
+# Run linters outside of pre-commit
+ruff check --fix
+ruff format
+codespell
+
+
 # All tests
 pytest
 
@@ -226,6 +232,9 @@ pytest tests/ -m integration
 python scripts/evals.py --dataset evals/hr_golden_set.jsonl
 
 python -m pytest --cov-report=xml --cov-report term-missing --cov=app tests/
+
+
+
 ```
 
 ---

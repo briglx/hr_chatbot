@@ -75,7 +75,7 @@ class TestSessionManager:
 
         result = await svc.get_history("user-123")
 
-        assert len(result) == 4
+        assert len(result) == 4  # noqa: PLR2004
         assert result[0]["role"] == "user"
         assert result[0]["content"] == "user message 0"
 
@@ -115,7 +115,7 @@ class TestSessionManager:
         await svc.append_turn("user-123", "How much vacation?", "You get 20 days.")
 
         saved = json.loads(redis_store.set.call_args[0][1])
-        assert len(saved) == 2
+        assert len(saved) == 2  # noqa: PLR2004
         assert saved[0] == {"role": "user", "content": "How much vacation?"}
         assert saved[1] == {"role": "assistant", "content": "You get 20 days."}
 
@@ -127,7 +127,7 @@ class TestSessionManager:
         await svc.append_turn("user-123", "follow up?", "follow up answer.")
 
         saved = json.loads(redis_store.set.call_args[0][1])
-        assert len(saved) == 4  # 2 existing + 2 new
+        assert len(saved) == 4  # 2 existing + 2 new # noqa: PLR2004
 
     @pytest.mark.asyncio
     async def test_append_turn_sets_ttl(self, svc, redis_store):
@@ -136,13 +136,13 @@ class TestSessionManager:
         await svc.append_turn("user-123", "question", "answer")
 
         call_kwargs = redis_store.set.call_args[1]
-        assert call_kwargs["ttl"] == 3600
+        assert call_kwargs["ttl"] == 3600  # noqa: PLR2004
 
     @pytest.mark.asyncio
     async def test_append_turn_trims_history_when_over_max_turns(
         self, svc, redis_store
     ):
-        # max_conversation_turns=3, so max 6 messages (3 turns × 2 messages)
+        # max_conversation_turns=3, so max 6 messages (3 turns × 2 messages) # noqa: RUF003
         # seed with 3 existing turns (6 messages) then add 1 more
         existing = make_history(turns=3)
         redis_store.get = AsyncMock(return_value=json.dumps(existing))
@@ -150,7 +150,9 @@ class TestSessionManager:
         await svc.append_turn("user-123", "new question", "new answer")
 
         saved = json.loads(redis_store.set.call_args[0][1])
-        assert len(saved) == 6  # trimmed back to max (3 turns x 2 messages)
+        assert (
+            len(saved) == 6  # noqa: PLR2004
+        )  # trimmed back to max (3 turns x 2 messages)
 
     @pytest.mark.asyncio
     async def test_append_turn_keeps_most_recent_messages_after_trim(

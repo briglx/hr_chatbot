@@ -76,17 +76,19 @@ class TestPromptService:
 
     def test_message_count_without_history(self, svc):
         # system + user = 2 messages
+        expected_count = 2
         messages = svc.build_messages(query="test", chunks=[])
-        assert len(messages) == 2
+        assert len(messages) == expected_count
 
     def test_message_count_with_history(self, svc):
         # system + 2 history turns + user = 4 messages
+        expected_count = 4
         messages = svc.build_messages(
             query="test",
             chunks=[],
             history=make_history(),
         )
-        assert len(messages) == 4
+        assert len(messages) == expected_count
 
     def test_history_inserted_between_system_and_user(self, svc):
         history = make_history()
@@ -100,8 +102,9 @@ class TestPromptService:
         assert messages[3]["content"] == "follow up"
 
     def test_none_history_is_ignored(self, svc):
+        expected_count = 2  # system + user
         messages = svc.build_messages(query="test", chunks=[], history=None)
-        assert len(messages) == 2
+        assert len(messages) == expected_count
 
     # -----------------------------------------------------------------------
     # build_messages() — system prompt content
@@ -160,5 +163,5 @@ class TestPromptService:
     def test_raises_if_template_missing(self, tmp_path):
         """PromptService pointed at an empty directory should raise on render."""
         svc = PromptService(prompts_dir=tmp_path)
-        with pytest.raises(Exception):
+        with pytest.raises(SyntaxError):
             svc.build_messages(query="test", chunks=[])

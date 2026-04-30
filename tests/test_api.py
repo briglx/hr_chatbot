@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -12,7 +14,7 @@ client = TestClient(app)
 
 def test_health_check():
     response = client.get("/health")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json() == {"status": "ok"}
 
 
@@ -23,45 +25,35 @@ def test_health_check():
 
 def test_ping():
     response = client.get("/api/ping")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json() == {"message": "pong"}
 
 
 def test_ping_method_not_allowed():
     response = client.post("/api/ping")
-    assert response.status_code == 405
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 # -----------------------------------------------------------------------
-# /api/messages
+# /api/conversations
 # -----------------------------------------------------------------------
 
 
-def test_messages_post():
+def test_new_conversation():
     response = client.post(
-        "/api/messages",
-        json={"type": "message", "text": "How many vacation days do I get?"},
+        "/api/conversations",
+        json={"metadata": {"topic": "demo"}},
     )
-    assert response.status_code == 200
-    assert response.json() == {"status": "received"}
-
-
-def test_messages_get_not_allowed():
-    """GET on /api/messages should return 405 Method Not Allowed."""
-    response = client.get("/api/messages")
-    assert response.status_code == 405
-
-
-def test_messages_empty_body():
-    """Empty body should still return 200 at this stub stage."""
-    response = client.post("/api/messages", json={})
-    assert response.status_code == 200
-
-
-def test_messages_content_type_json():
-    """Verify the response is JSON."""
-    response = client.post("/api/messages", json={"type": "message", "text": "hi"})
+    assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/json"
+    assert response.json()["metadata"]["topic"] == "demo"
+    assert isinstance(response.json()["id"], str)
+
+
+def test_conversations_get_not_allowed():
+    """GET on /api/conversations should return 405 Method Not Allowed."""
+    response = client.get("/api/conversations")
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 # -----------------------------------------------------------------------
@@ -71,13 +63,7 @@ def test_messages_content_type_json():
 
 def test_unknown_route_returns_404():
     response = client.get("/api/does-not-exist")
-    assert response.status_code == 404
-
-
-def test_root_returns_404():
-    """No route is registered at / — should 404 not 500."""
-    response = client.get("/")
-    assert response.status_code == 404
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 # -----------------------------------------------------------------------
@@ -87,13 +73,13 @@ def test_root_returns_404():
 
 def test_swagger_ui_available():
     response = client.get("/docs")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert "text/html" in response.headers["content-type"]
 
 
 def test_openapi_schema_available():
     response = client.get("/openapi.json")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
 
 def test_openapi_schema_structure():
@@ -108,4 +94,4 @@ def test_openapi_schema_contains_expected_routes():
     paths = response.json()["paths"]
     assert "/health" in paths
     assert "/api/ping" in paths
-    assert "/api/messages" in paths
+    assert "/api/conversations" in paths

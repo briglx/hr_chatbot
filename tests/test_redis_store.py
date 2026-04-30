@@ -123,7 +123,6 @@ class TestRedisStore:
         await store.set("key", "value")
         mock_redis_client.set.assert_called_once_with("key", "value", ex=None)
 
-
     @pytest.mark.asyncio
     async def test_set_raises_when_not_connected(self):
         store = RedisStore("redis://localhost:6379/0")

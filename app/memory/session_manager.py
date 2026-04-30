@@ -20,6 +20,8 @@ logger = structlog.get_logger(__name__)
 
 
 class Message(TypedDict):
+    """A single message in the conversation history."""
+
     role: str  # "user" | "assistant" | "system"
     content: str
 
@@ -28,6 +30,7 @@ class SessionManager:
     """Manages per-user conversation sessions backed by Redis."""
 
     def __init__(self, redis_store: RedisStore) -> None:
+        """Initialize the SessionManager with a RedisStore instance."""
         self._store = redis_store
         self._settings = get_settings()
 
@@ -37,7 +40,9 @@ class SessionManager:
 
     async def get_history(self, user_id: str) -> list[Message]:
         """Return the stored conversation history for a user.
-        Returns an empty list if no session exists yet."""
+
+        Returns an empty list if no session exists yet.
+        """
         key = self._key(user_id)
         try:
             raw = await self._store.get(key)

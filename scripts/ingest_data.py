@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-ingest_data.py - Ingest HR documents (PDF, DOCX) into pgvector store.
+"""Ingest HR documents (PDF, DOCX) into pgvector store.
 
 Usage:
     python scripts/ingest_data.py --source ./data/hr-docs --format pdf,docx
@@ -35,12 +34,14 @@ azure_client = AzureOpenAI(
 
 
 def extract_text_from_pdf(path: Path) -> str:
+    """Extract text from a PDF file, concatenating the text of all pages with double newlines."""
     reader = PdfReader(str(path))
     pages = [page.extract_text() or "" for page in reader.pages]
     return "\n\n".join(pages)
 
 
 def extract_text_from_docx(path: Path) -> str:
+    """Extract text from a DOCX file, concatenating non-empty paragraphs with double newlines."""
     doc = Document(str(path))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     return "\n\n".join(paragraphs)
@@ -58,6 +59,7 @@ EXTRACTORS = {
 def chunk_text(
     text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
 ) -> list[str]:
+    """Split the input text into chunks of approximately `chunk_size` characters, with an `overlap` between chunks."""
     chunks = []
     start = 0
     while start < len(text):
@@ -71,6 +73,7 @@ def chunk_text(
 
 
 def get_embedding(text: str) -> list[float]:
+    """Get the embedding vector for the given text using Azure OpenAI."""
     response = azure_client.embeddings.create(
         model=settings.azure_openai_embedding_model,
         input=text.replace("\n", " "),
@@ -93,6 +96,7 @@ async def get_connection():
 
 
 async def insert_document(conn, content: str, embedding: list[float], metadata: dict):
+    """Insert a document chunk into the database with the given content, embedding, and metadata."""
     source = metadata.get("source", "unknown")
     print(f"    Inserting chunk from {source} (metadata: {metadata})...")
 
@@ -125,6 +129,7 @@ async def insert_document(conn, content: str, embedding: list[float], metadata: 
 
 
 async def ingest_file(path: Path, conn) -> int:
+    """Ingest a single file: extract text, chunk it, get embeddings, and insert into DB."""
     ext = path.suffix.lower()
     extractor = EXTRACTORS.get(ext)
     if extractor is None:
@@ -156,6 +161,7 @@ async def ingest_file(path: Path, conn) -> int:
 
 
 async def ingest_directory(source: Path, formats: list[str], conn) -> None:
+    """Ingest all files in the source directory that match the specified formats."""
     extensions = {f".{fmt.lower().strip('.')}" for fmt in formats}
     files = [
         f for f in source.iterdir() if f.is_file() and f.suffix.lower() in extensions
@@ -174,6 +180,7 @@ async def ingest_directory(source: Path, formats: list[str], conn) -> None:
 
 
 def parse_args(args=None):
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Ingest HR documents into pgvector.")
     parser.add_argument("--source", type=Path, required=True, help="source directory")
     parser.add_argument("--format", type=str, default="pdf,docx")
@@ -181,6 +188,7 @@ def parse_args(args=None):
 
 
 async def main():
+    """Main entry point for the script."""
 
     args = parse_args()
 

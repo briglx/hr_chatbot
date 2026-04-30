@@ -34,6 +34,7 @@ class RetrievalService:
     """Search pgvector for document chunks similar to a query vector."""
 
     def __init__(self) -> None:
+        """Initialize the RetrievalService by creating an async database engine and session factory."""
         self._settings = get_settings()
         self._engine: AsyncEngine = create_async_engine(
             self._settings.database_url,
@@ -55,7 +56,8 @@ class RetrievalService:
     ) -> list[DocumentChunk]:
         """Find the most relevant document chunks for a query vector.
 
-        Args:
+        Parameters:
+        -----------
             query_vector: Embedding vector for the user's query.
             top_k: Number of chunks to return. Defaults to settings.vector_top_k.
             min_score: Minimum cosine similarity score (0-1). Chunks below this
@@ -63,9 +65,11 @@ class RetrievalService:
                        Defaults to settings.retrieval_min_score.
 
         Returns:
+        --------
             List of DocumentChunk ordered by relevance (highest score first).
 
         Raises:
+        -------
             VectorStoreError: If the database query fails.
         """
         k = top_k or self._settings.vector_top_k

@@ -1,9 +1,14 @@
-# hr_chatbot/auth.py
+"""Authentication module for fetching and caching Auth0 access tokens."""
 
+import base64
+from http import HTTPStatus
+import json
 import time
+
 import requests
 import structlog
-from app.config.settings import get_settings, AppEnv
+
+from app.config.settings import AppEnv, get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -11,18 +16,20 @@ _token_cache: dict = {"access_token": None, "expires_at": 0}
 
 s = get_settings()
 
+
 # ------------------------------------------------------------------
 # PRODUCTION: Client Credentials against YOUR Auth0 API
 # ------------------------------------------------------------------
 def _get_token_client_credentials() -> str:
-    """
+    """Get client credentials.
+
     Uses hr_chatbot's own client_id/secret to get a token scoped
     to your Kong gateway API (not the Auth0 Management API).
     """
-    domain = s.auth0_domain          # e.g. mycompany.us.auth0.com
-    client_id = s.auth0_client_id    # hr_chatbot Application → Client ID
+    domain = s.auth0_domain  # e.g. mycompany.us.auth0.com
+    client_id = s.auth0_client_id  # hr_chatbot Application → Client ID
     client_secret = s.auth0_client_secret
-    audience = s.auth0_audience      # https://api.mycompany.com  ← your API identifier
+    audience = s.auth0_audience  # https://api.mycompany.com  ← your API identifier
 
     resp = requests.post(
         f"https://{domain}/oauth/token",
@@ -30,14 +37,14 @@ def _get_token_client_credentials() -> str:
             "grant_type": "client_credentials",
             "client_id": client_id,
             "client_secret": client_secret,
-            "audience": audience,                 # MUST be your API, not auth0.com/api/v2
-            "scope": "openai:invoke",             # custom scope you created on your API
+            "audience": audience,  # MUST be your API, not auth0.com/api/v2
+            "scope": "openai:invoke",  # custom scope you created on your API
         },
         headers={"Content-Type": "application/json"},
         timeout=10,
     )
 
-    if resp.status_code == 401:
+    if resp.status_code == HTTPStatus.UNAUTHORIZED:
         raise RuntimeError(
             "Auth0 rejected client credentials. Check that:\n"
             "  1. AUTH0_AUDIENCE matches your API identifier exactly\n"
@@ -65,7 +72,7 @@ def _get_token_client_credentials() -> str:
 def _get_dev_token_from_env() -> str:
     token = s.auth0_dev_token
     if not token:
-        raise EnvironmentError(
+        raise OSError(
             "\nAUTH0_DEV_TOKEN is not set.\n"
             "Run the following to get a local dev token:\n\n"
             "  auth0 login\n"
@@ -82,13 +89,12 @@ def _get_dev_token_from_env() -> str:
 # Catches common mistakes like accidentally using a Management API token
 # ------------------------------------------------------------------
 def _validate_token_audience(token: str) -> None:
-    """
+    """Validate auth token.
+
     JWT payload is base64-encoded — decode it without verifying
     the signature just to check we have the right audience.
     Signature verification is Kong's job.
     """
-    import base64
-    import json
 
     try:
         payload_b64 = token.split(".")[1]
@@ -102,17 +108,15 @@ def _validate_token_audience(token: str) -> None:
         # aud can be a string or a list
         aud_list = [audience] if isinstance(audience, str) else audience
 
-    
-
         if not any(expected in a for a in aud_list):
             raise ValueError(
                 f"Token audience {aud_list} does not match AUTH0_AUDIENCE={expected}.\n"
                 "You may have accidentally fetched a Management API token.\n"
                 "Re-run: auth0 test token --audience $AUTH0_AUDIENCE"
             )
-        
+
         return payload
-    
+
     except (IndexError, KeyError):
         pass  # Malformed token — let Kong reject it with a clear 401
 
@@ -121,15 +125,22 @@ def _validate_token_audience(token: str) -> None:
 # Unified token getter with in-memory cache
 # ------------------------------------------------------------------
 def get_access_token(app_env=None, force_refresh=False) -> str:
+    """Get an access token, using an in-memory cache to avoid unnecessary requests."""
     print("HELLO")
     logger.debug("fetching_access_token")
-    
+
     now = time.time()
-    if not force_refresh and _token_cache["access_token"] and now < _token_cache["expires_at"] - 30:
-        logger.debug("using_cached_access_token", expires_in=int(_token_cache["expires_at"] - now))
+    if (
+        not force_refresh
+        and _token_cache["access_token"]
+        and now < _token_cache["expires_at"] - 30
+    ):
+        logger.debug(
+            "using_cached_access_token",
+            expires_in=int(_token_cache["expires_at"] - now),
+        )
         return _token_cache["access_token"]
 
-   
     if app_env is None:
         app_env = s.app_env
 

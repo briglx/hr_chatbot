@@ -1,3 +1,5 @@
+"""Logging configuration for the HR chatbot application."""
+
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
@@ -6,6 +8,7 @@ import structlog
 
 
 def setup_logging(log_file_path: str = "hr_chatbot.log"):
+    """Set up logging with structlog, including a rotating file handler and console output."""
     # Create a rotating file handler (logs to a file with rotation)
     file_handler = RotatingFileHandler(
         log_file_path,

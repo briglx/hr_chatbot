@@ -1,3 +1,5 @@
+"""Settings management using Pydantic BaseSettings. Loads from environment variables and .env file."""
+
 from enum import Enum
 from functools import lru_cache
 from typing import Literal
@@ -5,19 +7,28 @@ from typing import Literal
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+OPENAI_TEMPERATURE_MIN = 0.0
+OPENAI_TEMPERATURE_MAX = 2.0
+
 
 class VectorStore(str, Enum):
+    """Enum for supported vector store backends."""
+
     PGVECTOR = "pgvector"
     AZURE_AI_SEARCH = "azure_ai_search"
 
 
 class AppEnv(str, Enum):
+    """Enum for application environment."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables or .env file. Use get_settings() to access a cached singleton instance of this class throughout the app."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -58,10 +69,16 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Auth0
     # ------------------------------------------------------------------ #
-    auth0_domain: str = Field(default="", description="Auth0 domain, e.g. mycompany.us.auth0.com")
+    auth0_domain: str = Field(
+        default="", description="Auth0 domain, e.g. mycompany.us.auth0.com"
+    )
     auth0_client_id: str = Field(default="", description="Auth0 application client ID")
-    auth0_client_secret: str = Field(default="", description="Auth0 application client secret")
-    auth0_audience: str = Field(default="", description="Auth0 API identifier (audience) for token requests")
+    auth0_client_secret: str = Field(
+        default="", description="Auth0 application client secret"
+    )
+    auth0_audience: str = Field(
+        default="", description="Auth0 API identifier (audience) for token requests"
+    )
     auth0_dev_token: str = Field(
         default="",
         description=(
@@ -80,7 +97,9 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Redis (session store + semantic cache)
     # ------------------------------------------------------------------ #
-    redis_url: str = Field(default="", description="Redis connection URL, e.g. redis://localhost:6379/0")
+    redis_url: str = Field(
+        default="", description="Redis connection URL, e.g. redis://localhost:6379/0"
+    )
     session_ttl_seconds: int = 3600
     max_conversation_turns: int = 20
     cache_similarity_threshold: float = Field(
@@ -137,13 +156,15 @@ class Settings(BaseSettings):
     @field_validator("openai_temperature")
     @classmethod
     def temperature_in_range(cls, v: float) -> float:
-        if not 0.0 <= v <= 2.0:
+        """Validate that the OpenAI temperature setting is between 0.0 and 2.0, which are the valid bounds for this parameter. This helps catch configuration errors early and ensures that the application behaves as expected when generating responses from the LLM."""
+        if not OPENAI_TEMPERATURE_MIN <= v <= OPENAI_TEMPERATURE_MAX:
             raise ValueError("openai_temperature must be between 0.0 and 2.0")
         return v
 
     @field_validator("cache_similarity_threshold")
     @classmethod
     def similarity_in_range(cls, v: float) -> float:
+        """Validate that the cache similarity threshold is between 0.0 and 1.0, which are the valid bounds for cosine similarity scores. This ensures that the semantic cache behaves correctly and prevents misconfiguration that could lead to unexpected retrieval results."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("cache_similarity_threshold must be between 0.0 and 1.0")
         return v
@@ -161,10 +182,12 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     @property
     def is_production(self) -> bool:
+        """Convenience property to check if the application is running in production environment. This can be used throughout the codebase to enable or disable certain features, logging, or behaviors that should only occur in production."""
         return self.app_env == AppEnv.PRODUCTION
 
     @property
     def is_development(self) -> bool:
+        """Convenience property to check if the application is running in development environment. This can be used to enable features like verbose logging, debug endpoints, or mock integrations that should only be active during development."""
         return self.app_env == AppEnv.DEVELOPMENT
 
 

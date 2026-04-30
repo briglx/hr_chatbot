@@ -27,6 +27,7 @@ class EmbeddingService:
     """Generate vector embeddings using the OpenAI embeddings API."""
 
     def __init__(self) -> None:
+        """Initialize the EmbeddingService with OpenAI API client and settings."""
         self._settings = get_settings()
         self._client = AsyncAzureOpenAI(
             api_key=self._settings.azure_openai_api_key,
@@ -43,13 +44,16 @@ class EmbeddingService:
     async def embed(self, text: str) -> list[float]:
         """Embed a single string and return the vector.
 
-        Args:
+        Parameters
+        ----------
             text: The text to embed (e.g. a user query or document chunk).
 
         Returns:
+        --------
             A list of floats representing the embedding vector.
 
         Raises:
+        -------
             LLMQuotaError: Rate limit hit — retried automatically up to 3 times.
             EmbeddingError: Any other failure from the OpenAI embeddings API.
         """
@@ -87,13 +91,16 @@ class EmbeddingService:
 
         More efficient than calling embed() in a loop for bulk ingestion.
 
-        Args:
+        Parameters:
+        -----------
             texts: List of strings to embed. Empty strings are rejected.
 
         Returns:
+        --------
             List of embedding vectors in the same order as the input texts.
 
         Raises:
+        -------
             EmbeddingError: If any text is empty or the API call fails.
         """
         if not texts:

@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 class RAGPipeline:
     """End-to-end Retrieval-Augmented Generation pipeline."""
 
-    def __init__(
+    def __init__(  # noqa PLR0913
         self,
         llm_service: LLMService,
         embedding_service: EmbeddingService,
@@ -41,6 +41,7 @@ class RAGPipeline:
         session_manager: SessionManager,
         pii_filter: PIIFilter,
     ) -> None:
+        """Initialize the RAGPipeline with its dependencies."""
         self._llm = llm_service
         self._embedder = embedding_service
         self._retriever = retrieval_service
@@ -59,16 +60,19 @@ class RAGPipeline:
     ) -> str:
         """Process a user query and return the bot's answer.
 
-        Args:
+        Parameters
+        ----------
             raw_query: The raw message text from the user.
             employee_name: Optional — passed to prompt for personalisation.
             company_name: Optional — passed to prompt for personalisation.
             min_score: Minimum cosine similarity score for retrieved chunks.
 
         Returns:
+        -------
             The assistant's answer string.
 
         Raises:
+        ------
             NoDocumentsFoundError: No relevant HR documents found.
             LLMError: LLM call failed.
         """
@@ -93,7 +97,9 @@ class RAGPipeline:
                 context={"employee_name": employee_name, "query": clean_query},
             )
 
-        logger.info("Chunks retrieved", num_chunks=len(chunks), employee_name=employee_name)
+        logger.info(
+            "Chunks retrieved", num_chunks=len(chunks), employee_name=employee_name
+        )
 
         # 4. Load conversation history
         history = await self._sessions.get_history(employee_name)

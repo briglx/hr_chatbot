@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from openai import APIStatusError, RateLimitError
 import pytest
 
 from app.exceptions.errors import EmbeddingError, LLMQuotaError, VectorStoreError
@@ -33,6 +34,7 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_returns_vector(self):
+        expected_length = 1536
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
                 return_value=self.make_embedding_response([self.FAKE_VECTOR])
@@ -41,7 +43,7 @@ class TestEmbeddingService:
             result = await svc.embed("How many vacation days do I get?")
 
         assert isinstance(result, list)
-        assert len(result) == 1536
+        assert len(result) == expected_length
         assert result == self.FAKE_VECTOR
 
     @pytest.mark.asyncio
@@ -87,7 +89,6 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_raises_quota_error_on_rate_limit(self):
-        from openai import RateLimitError
 
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
@@ -103,7 +104,6 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_api_failure(self):
-        from openai import APIStatusError
 
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
@@ -124,6 +124,7 @@ class TestEmbeddingService:
     @pytest.mark.asyncio
     async def test_embed_batch_returns_multiple_vectors(self):
         vectors = [[0.1] * 1536, [0.2] * 1536, [0.3] * 1536]
+        expected_length = 3
 
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
@@ -132,7 +133,7 @@ class TestEmbeddingService:
             svc = EmbeddingService()
             result = await svc.embed_batch(["query one", "query two", "query three"])
 
-        assert len(result) == 3
+        assert len(result) == expected_length
         assert result[0] == vectors[0]
         assert result[1] == vectors[1]
         assert result[2] == vectors[2]
@@ -151,7 +152,6 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_batch_raises_quota_error_on_rate_limit(self):
-        from openai import RateLimitError
 
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
@@ -167,7 +167,6 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_batch_raises_embedding_error_on_api_failure(self):
-        from openai import APIStatusError
 
         with patch("app.services.embedding_service.AsyncAzureOpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create = AsyncMock(
@@ -259,16 +258,18 @@ class TestRetrievalService:
         svc = RetrievalService()
         results = await svc.search(FAKE_VECTOR)
 
-        assert len(results) == 2
+        assert len(results) == len(rows)
         assert all(isinstance(r, DocumentChunk) for r in results)
 
     @pytest.mark.asyncio
     async def test_search_maps_fields_correctly(self, mock_session):
+        mock_id = 42
+        mock_score = 0.91
         row = self.make_row(
-            id=42,
+            id=mock_id,
             content="You get 20 vacation days.",
             source="hr-policy.pdf",
-            score=0.91,
+            score=mock_score,
             metadata={"page": 3},
         )
         mock_session.execute = AsyncMock(
@@ -279,15 +280,16 @@ class TestRetrievalService:
         results = await svc.search(FAKE_VECTOR)
         chunk = results[0]
 
-        assert chunk.id == 42
+        assert chunk.id == mock_id
         assert chunk.content == "You get 20 vacation days."
         assert chunk.source == "hr-policy.pdf"
-        assert chunk.score == 0.91
+        assert chunk.score == mock_score
         assert chunk.metadata == {"page": 3}
 
     @pytest.mark.asyncio
     async def test_search_rounds_score_to_4_decimal_places(self, mock_session):
-        row = self.make_row(score=0.912345678)
+        mock_score = 0.912345678
+        row = self.make_row(score=mock_score)
         mock_session.execute = AsyncMock(
             return_value=MagicMock(fetchall=MagicMock(return_value=[row]))
         )
@@ -295,7 +297,7 @@ class TestRetrievalService:
         svc = RetrievalService()
         results = await svc.search(FAKE_VECTOR)
 
-        assert results[0].score == 0.9123
+        assert results[0].score == round(mock_score, 4)
 
     @pytest.mark.asyncio
     async def test_search_returns_empty_list_when_no_results(self, mock_session):
@@ -318,7 +320,7 @@ class TestRetrievalService:
         await svc.search(FAKE_VECTOR)
 
         call_params = mock_session.execute.call_args[0][1]
-        assert call_params["top_k"] == 5  # matches make_settings().vector_top_k
+        assert call_params["top_k"] == 5  # noqa: PLR2004
 
     @pytest.mark.asyncio
     async def test_search_respects_custom_top_k(self, mock_session):
@@ -330,7 +332,7 @@ class TestRetrievalService:
         await svc.search(FAKE_VECTOR, top_k=3)
 
         call_params = mock_session.execute.call_args[0][1]
-        assert call_params["top_k"] == 3
+        assert call_params["top_k"] == 3  # noqa: PLR2004
 
     @pytest.mark.asyncio
     async def test_search_passes_min_score(self, mock_session):
@@ -342,7 +344,7 @@ class TestRetrievalService:
         await svc.search(FAKE_VECTOR, min_score=0.75)
 
         call_params = mock_session.execute.call_args[0][1]
-        assert call_params["min_score"] == 0.75
+        assert call_params["min_score"] == 0.75  # noqa: PLR2004
 
     @pytest.mark.asyncio
     async def test_search_handles_none_metadata(self, mock_session):

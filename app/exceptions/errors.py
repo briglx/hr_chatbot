@@ -1,3 +1,6 @@
+"""Exception classes for the HR chatbot application."""
+
+
 class HRBotError(Exception):
     """Base class for all HR chatbot application errors."""
 
@@ -10,6 +13,7 @@ class HRBotError(Exception):
         *,
         context: dict | None = None,
     ) -> None:
+        """Initialize the HRBotError with a message and optional context."""
         super().__init__(message)
         self.context: dict = context or {}
 
@@ -70,7 +74,7 @@ class EmbeddingError(RetrievalError):
 class VectorStoreError(RetrievalError):
     """Failed to connect to or query the vector database."""
 
-    
+
 class NoDocumentsFoundError(RetrievalError):
     """No relevant documents found for a query."""
 
@@ -92,9 +96,11 @@ class SessionError(HRBotError):
 class SessionStoreUnavailableError(SessionError):
     """Failed to connect to or read/write from the session store."""
 
+
 # ------------------------------------------------------------------ #
 # Conversation errors
 # ------------------------------------------------------------------ #
+
 
 class ConversationNotFoundError(HRBotError):
     """The specified conversation ID does not exist."""

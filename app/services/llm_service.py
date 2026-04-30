@@ -31,6 +31,7 @@ class LLMService:
     """Async wrapper for Azure OpenAI chat completions."""
 
     def __init__(self) -> None:
+        """Initialize the LLMService with an AsyncAzureOpenAI client using settings from the configuration. The client is used to make API calls to Azure OpenAI for generating embeddings and chat completions."""
         self._settings = get_settings()
         self._client = AsyncAzureOpenAI(
             api_key=self._settings.azure_openai_api_key,
@@ -54,16 +55,19 @@ class LLMService:
     ) -> str:
         """Send a chat completion request and return the response text.
 
-        Args:
+        Parameters:
+        -----------
             messages: Full message list from PromptService.build_messages().
             temperature: Override the default temperature from settings.
             max_tokens: Override the default max_tokens from settings.
             user_id: Passed to Azure OpenAI for abuse detection.
 
         Returns:
+        --------
             The assistant's response text.
 
         Raises:
+        -------
             LLMQuotaError: Rate limit exceeded — retried automatically up to 3 times.
             LLMContextLengthError: Prompt exceeds the model's context window.
             LLMContentPolicyError: Request blocked by content policy.

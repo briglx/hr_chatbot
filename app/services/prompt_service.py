@@ -25,6 +25,7 @@ class PromptService:
     def __init__(
         self, prompts_dir: Path = PROMPTS_DIR, template: str | None = None
     ) -> None:
+        """Initialize the PromptService."""
         self._settings = get_settings()
         self._template = template or self._settings.prompt_template
         self._env = Environment(
@@ -32,6 +33,7 @@ class PromptService:
             undefined=StrictUndefined,
             trim_blocks=True,
             lstrip_blocks=True,
+            autoescape=True,
         )
 
     def build_messages(
@@ -46,11 +48,13 @@ class PromptService:
         """Assemble the full message list to send to LLMService.
 
         Layout:
+        -------
             [system prompt with retrieved HR context]
             [conversation history — alternating user/assistant turns]
             [current user query]
 
         Args:
+        -----
             query: The current user question (already PII-filtered).
             chunks: Retrieved document chunks from RetrievalService.
             history: Previous turns from SessionManager.
@@ -58,6 +62,7 @@ class PromptService:
             company_name: Optional — customises the company name in the prompt.
 
         Returns:
+        --------
             List of Message dicts ready to pass to LLMService.complete().
         """
         system_content = self._render_system_prompt(

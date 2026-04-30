@@ -110,16 +110,15 @@ unfixable = [
 "__init__.py"  = ["F401", "D104"]               # allow unused imports and missing docstring
 
 [tool.ruff.lint.isort]
-# Mirrors your [tool.isort] config exactly
-known-first-party = ["srpenergy", "tests"]
+known-first-party = ["app"]
 force-sort-within-sections = true
 forced-separate = ["tests"]
 combine-as-imports = true
-# Note: profile = "black" is ruff's default behaviour, no setting needed
+split-on-trailing-comma = false
 
 [tool.ruff.lint.pydocstyle]
 # Set to match your docstring style: "numpy", "google", or "pep257"
-convention = "numpy"   # adjust if your docstrings aren't numpy-style
+convention = "google"
 
 [tool.ruff.lint.pylint]
 max-args = 5           # pylint default; tune to your codebase
@@ -132,9 +131,10 @@ skip-magic-trailing-comma = false
 line-ending = "lf"     # matches your pylintrc + pyproject [FORMAT] LF setting
 
 [tool.codespell]
-skip = './.*,./.pyc,./docs/_build/*,./htmlcov/*'
+skip = './.*,./.pyc,./docs/_build/*,./htmlcov/*,./front_end/node_modules/*'
 count = true
 quiet-level = 2
+ignore-words-list = "ABL,ABD"
 
 # https://bandit.readthedocs.io/en/latest/config.html
 [tool.bandit]
